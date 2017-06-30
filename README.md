@@ -1,0 +1,2 @@
+# xt_score_project
+用于自动抓取whoscored每场比赛数据并生成excel表格，以便快速发布到各平台
