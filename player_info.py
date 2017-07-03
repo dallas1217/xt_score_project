@@ -20,7 +20,7 @@ def stats_info(field,info):
 def normal_stats(stats):
     stats_list=[]        #最终返回的符合xt_score的球员信息及数据，由xt_stats组合而成，列表类型
     full_stats={}        #全部数据，字典类型
-    xt_stats={}          #返回的符合xt_score的单个球员数据
+    xt_stats={}          #返回的符合xt_score的单个球员数据，字典类型
     ### 所有数据项
     item_list=['aerialSuccess', 'aerialsTotal', 'aerialsWon', 'claimsHigh', 'clearances', 'collected', 'cornersAccurate', 'cornersTotal', 'defensiveAerials', 'dispossessed', 'dribbleSuccess', 'dribbledPast', 'dribblesAttempted', 'dribblesLost', 'dribblesWon', 'errors', 'foulsCommited', 'interceptions', 'offensiveAerials', 'offsidesCaught', 'parriedSafe', 'passSuccess', 'passesAccurate', 'passesKey', 'passesTotal', 'possession', 'ratings', 'shotsBlocked', 'shotsOffTarget', 'shotsOnTarget', 'shotsTotal', 'tackleSuccess', 'tackleSuccessful', 'tackleUnsuccesful', 'tacklesTotal', 'throwInAccuracy', 'throwInsAccurate', 'throwInsTotal', 'totalSaves', 'touches']
     ### xt_score所需普通球员数据项
@@ -29,9 +29,9 @@ def normal_stats(stats):
     gk_list=['totalSaves','claimsHigh','collected','parriedSafe','errors']
     ### 根据位置计算和整合，分为普通球员和门将
     for line in stats:
-        player_stats={}      
-        player_stats['name']=line['name']
-        player_stats['position']=line['position']
+        #player_stats={}   
+        #player_stats['name']=line['name']
+        #player_stats['position']=line['position']
         for item in item_list:
             if item in line['stats']:
                 full_stats[item]=single_item(line['stats'][item])
@@ -42,18 +42,19 @@ def normal_stats(stats):
                             for item in item_list:
                 if item in gk_list:
                     xt_stats[item]=full_stats[item]
+            ### 门将位置值需要统计传球成功率，使用reduce函数加上percent_item函数进行计算
             xt_stats['passSuccess']=reduce(percent_item,[full_stats['passesAccurate'],full_stats['passesTotal']])
         else:
             for item in item_list:
                 if item in stat_list:
                     xt_stats[item]=full_stats[item]
-            ### 一些百分比统计项，使用reduce函数加上percent_item函数进行计算
+            ### 普通球员需要统计传球成功率，射门成功率，对抗成功率和盘带成功率
             xt_stats['passSuccess']=reduce(percent_item,[full_stats['passesAccurate'],full_stats['passesTotal']])
             xt_stats['aerialSuccess']=reduce(percent_item,[full_stats['aerialsWon'],full_stats['aerialsTotal']])
             xt_stats['shotSuccess']=reduce(percent_item,[full_stats['shotsOnTarget'],full_stats['shotsTotal']])
             xt_stats['dribbleSuccess']=reduce(percent_item,[full_stats['dribblesWon'],full_stats['dribblesAttempted']])
-        player_stats['stats']=xt_stats.copy()
-        stats_list.append(player_stats)
+        #player_stats['stats']=xt_stats.copy()
+        stats_list.append(xt_stats)
     return stats_list
 
 ### 单项数据总和
