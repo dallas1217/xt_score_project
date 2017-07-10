@@ -1,39 +1,59 @@
-#!/usr/local/python3.6/bin/python3.6
 #coding=utf-8
 
-import re
+from enum import Enum
 from openpyxl import Workbook
 from openpyxl import load_workbook
 
-wb=load_workbook('xt_score_template.xlsx')   #输入的xt_score excel模板
-ws=wb.get_sheet_by_name('Sheet1')    #第一张表名
+wb=load_workbook('xt_score_template.xlsx')
+ws=wb.get_sheet_by_name('Sheet1')
 
-### 模拟player_info.py内的字典输出位置，之后便正式通过字典输出
-pos_list=['GK','DR','DL','DC','DC','CM','CM','CM','FWR','FW','FWL']
-l=[]
-start_line=33    #从表格第33行开始输出结果
+# 使用枚举方法定义常量，目前的BUG是相同值的位置会显示第一个成员位置，后续考虑位置单独性解决
+class Position(Enum):
+    FW=0
+    FWR=2
+    FWL=2
+    AMR=2
+    AML=2
+    MR=2
+    ML=2
+    AMC=1
+    CM=3
+    DM=4
+    DMR=5
+    DML=5
+    DR=5
+    DL=5
+    DC=6
+    GK=7
 
-''' 4到28行为位置评分模板，按照以下位置设置成模板，详情请参考xt_scored_template.xlsx:
-FW、AMC、FWR/FWL/AMR/AML/NR/ML、CM、DM、DR/DL/DMR/DML、DC、GK
-目前已做到匹配模板位置项便黏贴，但出现FW匹配FW和FWR/FWL/AMR/AML/NR/ML问题，之后考虑通过正则表达式re匹配，做到更精确
-至于模板内的色调，下一步考虑统一模板内用色，并进行测试
-'''
-for i in range(4,28,3):
-    for position in pos_list:
-        default_pos=ws['A%d' %i].value
-        if position in default_pos:
-            for row in ws.iter_rows(min_row=i,max_row=(i+2)):   #模板分为三行，这里i的值到i+2即为要使用的模板列
-                for cell in row:
+# 模拟从json文件获取位置，生成位置模板，后续可以考虑保留该方法
+pos_list=['GK','DR','DL','DC','DC','DM','DM','AMR','AML','AMC','FW']
+# 打分表开始位置
+start_line=33
+
+for pos in pos_list:
+    # 匹配枚举内的位置，生成表格
+    if pos in Position.__members__.keys():
+        pos_id=Position[pos].value    #获取位置IP，用于修改打分卡内位置和球员名称
+        pos_name=Position[pos].name   #获取位置名称
+        for i in range(4,28,3):
+            default_pos=ws['A%d' %i].value
+            if pos_id==default_pos:
+                for row in ws.iter_rows(min_row=i,max_row=(i+2)):   #模板分为三行，这里i的值到i+2即为要使用的模板列
+                    for cell in row:
                         new_cell=ws['%s%d' %(cell.column,start_line)]
                         new_cell.value=cell.value
                         new_cell.style=cell.style
-                start_line+=1
-                print(start_line)
-            ws['A%d' %start_line].value=position    #将模板原有的位置值替换成实际球员位置值
-            print(ws['A%d' %start_line].value)
-        else:
-             ### 
-             pass
+                    #A列位置如何pos_id相等，修改球员名字和位置名字
+                    if ws['A%d' %start_line].value==pos_id:
+                        ws['A%d' %start_line].value='Player'
+                        ws['B%d' %start_line].value=pos_name
+                    start_line+=1
+                    print(start_line)
 
-### 保存excel
+                    
+#保存表格
 wb.save('xt_score_test.xlsx')
+
+
+
