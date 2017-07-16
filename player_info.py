@@ -1,12 +1,11 @@
-#!/usr/local/python3.6/bin/python3.6
+#coding = utf-8
 
-import json,xlsxwriter
+import json,sys
 from functools import reduce
 
-### 初始化json内容，目前马龙提供的json文件有4行，先抽取带数据的一行进行测试（第一行），之后再优化爬虫脚本
-### 返回字典类型，包含球员名，球员位置和球员所有数据
 def stats_info(field,info):
-    stats_list=[]                                      
+    stats_list=[]
+    
     for l in info[field]['players']:
         player_info={}
         if 'isFirstEleven' in l or 'subbedInExpandedMinute' in l:
@@ -14,71 +13,76 @@ def stats_info(field,info):
             player_info['position']=l['position']      #Player position
             player_info['stats']=l['stats']            #Player stats in json file
             stats_list.append(player_info)
+            
     return stats_list
 
-### 细化球员数据，筛选出符合xt_score的项并整合
-def normal_stats(stats):
-    stats_list=[]        #最终返回的符合xt_score的球员信息及数据，由xt_stats组合而成，列表类型
-    full_stats={}        #全部数据，字典类型
-    xt_stats={}          #返回的符合xt_score的单个球员数据，字典类型
-    ### 所有数据项
+### 细化球员数据，筛选出符合xt_score的项并整合，返回xt_list。whoscored按照时间点返回数据，需要函数求和以及计算总共的百分比
+def normal_stats(line):
+    full_stats={}   #全部数据，字典类型
+    xt_list=[]      #最终返回的符合xt_score的球员信息及数据，列表类型
+
+    # whosored在Match Center所有项目
     item_list=['aerialSuccess', 'aerialsTotal', 'aerialsWon', 'claimsHigh', 'clearances', 'collected', 'cornersAccurate', 'cornersTotal', 'defensiveAerials', 'dispossessed', 'dribbleSuccess', 'dribbledPast', 'dribblesAttempted', 'dribblesLost', 'dribblesWon', 'errors', 'foulsCommited', 'interceptions', 'offensiveAerials', 'offsidesCaught', 'parriedSafe', 'passSuccess', 'passesAccurate', 'passesKey', 'passesTotal', 'possession', 'ratings', 'shotsBlocked', 'shotsOffTarget', 'shotsOnTarget', 'shotsTotal', 'tackleSuccess', 'tackleSuccessful', 'tackleUnsuccesful', 'tacklesTotal', 'throwInAccuracy', 'throwInsAccurate', 'throwInsTotal', 'totalSaves', 'touches']
-    ### xt_score所需普通球员数据项
-    stat_list=['aerialsWon','aerialsTotal','shotsOnTarget','shotsTotal','dribblesAttempted','dribblesWon','clearances','interceptions','tackleSuccessful','passesKey','errors','dribbledPast']
-    ### xt_score所需门将数据项
+    # xt_score普通球员项目
+    outfield_list=['aerialsWon','aerialsTotal','shotsOnTarget','shotsTotal','dribblesAttempted','dribblesWon','passesAccurate','passesTotal','clearances','interceptions','tackleSuccessful','passesKey','errors','dribbledPast']
+    # xt_score门将项目
     gk_list=['totalSaves','claimsHigh','collected','parriedSafe','errors']
+
     ### 根据位置计算和整合，分为普通球员和门将
-    for line in stats:
-        #player_stats={}   
-        #player_stats['name']=line['name']
-        #player_stats['position']=line['position']
+    for l in line:
+        xt_stats={}
+        xt_stats['name'] = l['name']
+        xt_stats['position'] = l['position']
+        xt_stats['stats']={}
+        
         for item in item_list:
-            if item in line['stats']:
-                full_stats[item]=single_item(line['stats'][item])
+            if item in l['stats']:
+                full_stats[item]=single_item(l['stats'][item])
             else:
                 full_stats[item]=0.0
-        if 'GK' in line['position']:
-            for item in item_list:
-                            for item in item_list:
-                if item in gk_list:
-                    xt_stats[item]=full_stats[item]
+                
+        if 'GK' in l['position']:
+            for key in full_stats.keys():
+                if key in gk_list:
+                    xt_stats['stats'][key] = full_stats[key]
             ### 门将位置值需要统计传球成功率，使用reduce函数加上percent_item函数进行计算
-            xt_stats['passSuccess']=reduce(percent_item,[full_stats['passesAccurate'],full_stats['passesTotal']])
-        else:
-            for item in item_list:
-                if item in stat_list:
-                    xt_stats[item]=full_stats[item]
-            ### 普通球员需要统计传球成功率，射门成功率，对抗成功率和盘带成功率
-            xt_stats['passSuccess']=reduce(percent_item,[full_stats['passesAccurate'],full_stats['passesTotal']])
-            xt_stats['aerialSuccess']=reduce(percent_item,[full_stats['aerialsWon'],full_stats['aerialsTotal']])
-            xt_stats['shotSuccess']=reduce(percent_item,[full_stats['shotsOnTarget'],full_stats['shotsTotal']])
-            xt_stats['dribbleSuccess']=reduce(percent_item,[full_stats['dribblesWon'],full_stats['dribblesAttempted']])
-        #player_stats['stats']=xt_stats.copy()
-        stats_list.append(xt_stats)
-    return stats_list
+            xt_stats['stats']['passSuccess']=reduce(percent_item,[full_stats['passesAccurate'],full_stats['passesTotal']])
 
-### 单项数据总和
+        else:
+            ### 普通球员需要统计传球成功率，射门成功率，对抗成功率和盘带成功率
+            for key in full_stats.keys():
+                if key in outfield_list:
+                    xt_stats['stats'][key] = full_stats[key]
+            xt_stats['stats']['passSuccess']=reduce(percent_item,[full_stats['passesAccurate'],full_stats['passesTotal']])
+            xt_stats['stats']['aerialSuccess']=reduce(percent_item,[full_stats['aerialsWon'],full_stats['aerialsTotal']])
+            xt_stats['stats']['shotSuccess']=reduce(percent_item,[full_stats['shotsOnTarget'],full_stats['shotsTotal']])
+            xt_stats['stats']['dribbleSuccess']=reduce(percent_item,[full_stats['dribblesWon'],full_stats['dribblesAttempted']])
+                
+        xt_list.append(xt_stats)
+    return xt_list
+
+### 单项数据求和
 def single_item(item):
     count=0
     for i in item.values():
         count+=i
     return float('%.1f' %count)
 
-### 百分比计算，返回浮点数，根据足球事实，total总大于等于success，假如total=0，返回0
+### 百分比数据求值
 def percent_item(success,total):
     if total==0.0:
         return 0.0
     if success<=total:
-        return round((success/total*100))
+        return float('%.1f' %(success/total*100))
     else:
         print("Total item must bigger than success item!")
-        break
+        sys.exit(1)
 
-### 程序主题，输入json文件，后续会返回主客场状况、对阵球队名称等信息，目前测试场次为客场对阵西布朗的比赛
 if __name__=='__main__':
     f=open('json_1.txt','rb')
     for line in f.readlines():
         info=json.loads(line)
     f.close()
-    away_stats=stats_info('away',info)
-    print(normal_stats(away_stats))
+    liver_stats=stats_info('away',info)
+    for item in normal_stats(liver_stats):
+        print(item['name'],item['position'],item['stats'],'\n')
