@@ -86,3 +86,4 @@ if __name__=='__main__':
     liver_stats=stats_info('away',info)
     for item in normal_stats(liver_stats):
         print(item['name'],item['position'],item['stats'],'\n')
+        
