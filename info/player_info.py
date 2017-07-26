@@ -24,9 +24,10 @@ def normal_stats(line):
     # whosored在Match Center所有项目
     item_list=['aerialSuccess', 'aerialsTotal', 'aerialsWon', 'claimsHigh', 'clearances', 'collected', 'cornersAccurate', 'cornersTotal', 'defensiveAerials', 'dispossessed', 'dribbleSuccess', 'dribbledPast', 'dribblesAttempted', 'dribblesLost', 'dribblesWon', 'errors', 'foulsCommited', 'interceptions', 'offensiveAerials', 'offsidesCaught', 'parriedSafe', 'passSuccess', 'passesAccurate', 'passesKey', 'passesTotal', 'possession', 'ratings', 'shotsBlocked', 'shotsOffTarget', 'shotsOnTarget', 'shotsTotal', 'tackleSuccess', 'tackleSuccessful', 'tackleUnsuccesful', 'tacklesTotal', 'throwInAccuracy', 'throwInsAccurate', 'throwInsTotal', 'totalSaves', 'touches']
     # xt_score普通球员项目
-    outfield_list=['aerialsWon','aerialsTotal','shotsOnTarget','shotsTotal','dribblesAttempted','dribblesWon','passesAccurate','passesTotal','clearances','interceptions','tackleSuccessful','passesKey','errors','dribbledPast']
+    outfield_list=['dribbledPast','dribblesWon','passesKey','errors']
     # xt_score门将项目
-    gk_list=['totalSaves','claimsHigh','collected','parriedSafe','errors']
+    #gk_list=['totalSaves','claimsHigh','collected','parriedSafe','errors']
+    gk_list=['totalSaves','collected','errors']
 
     ### 根据位置计算和整合，分为普通球员和门将
     for l in line:
@@ -56,7 +57,8 @@ def normal_stats(line):
             xt_stats['stats']['passSuccess']=reduce(percent_item,[full_stats['passesAccurate'],full_stats['passesTotal']])
             xt_stats['stats']['aerialSuccess']=reduce(percent_item,[full_stats['aerialsWon'],full_stats['aerialsTotal']])
             xt_stats['stats']['shotSuccess']=reduce(percent_item,[full_stats['shotsOnTarget'],full_stats['shotsTotal']])
-            xt_stats['stats']['dribbleSuccess']=reduce(percent_item,[full_stats['dribblesWon'],full_stats['dribblesAttempted']])
+            #xt_stats['stats']['dribbleSuccess']=reduce(percent_item,[full_stats['dribblesWon'],full_stats['dribblesAttempted']])
+            xt_stats['stats']['defenceStats']=full_stats['clearances']+full_stats['interceptions']+full_stats['tackleSuccessful']
                 
         xt_list.append(xt_stats)
     return xt_list
@@ -78,12 +80,14 @@ def percent_item(success,total):
         print("Total item must bigger than success item!")
         sys.exit(1)
 
-if __name__=='__main__':
+### 返回计算结果，列表类型
+def main():
     f=open('json_1.txt','rb')
     for line in f.readlines():
         info=json.loads(line)
     f.close()
-    liver_stats=stats_info('away',info)
-    for item in normal_stats(liver_stats):
-        print(item['name'],item['position'],item['stats'],'\n')
-        
+    liver_stats=normal_stats(stats_info('away',info))
+    return liver_stats
+
+if __name__=='__main__':
+    main()
